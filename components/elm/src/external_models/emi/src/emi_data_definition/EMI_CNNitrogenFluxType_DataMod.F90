@@ -205,6 +205,28 @@ contains
        dim1_beg_name  =  dimname_begc
        dim1_end_name  =  dimname_endc
        data_found   =  .true.
+
+    case(E2L_FLUX_N2O)
+       id_val         =  E2L_FLUX_N2O
+       name_val       =  'N2O flux'
+       long_name_val  =  'N2O flux: EM to ELM'
+       units_val      =  '[gN/m2/s]'
+       is_real_type   =  .true.
+       ndim           =  1
+       dim1_beg_name  =  dimname_begc
+       dim1_end_name  =  dimname_endc
+       data_found   =  .true.
+
+    case(E2L_FLUX_N2)
+       id_val         =  E2L_FLUX_N2
+       name_val       =  'N2 flux'
+       long_name_val  =  'N2 flux: EM to ELM'
+       units_val      =  '[gN/m2/s]'
+       is_real_type   =  .true.
+       ndim           =  1
+       dim1_beg_name  =  dimname_begc
+       dim1_end_name  =  dimname_endc
+       data_found   =  .true.
     end select
     
   end subroutine EMI_CNNitrogenFluxType_DataInfoByID

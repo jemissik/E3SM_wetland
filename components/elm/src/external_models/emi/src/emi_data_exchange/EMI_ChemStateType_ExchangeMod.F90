@@ -266,6 +266,7 @@ contains
          soil_Fe2                      => col_chem%soil_Fe2                      , &
          soil_FeOxide                  => col_chem%soil_FeOxide                  , &
          soil_FeS                      => col_chem%soil_FeS                      , &
+         soil_acetate                  => col_chem%soil_acetate                  , &
          water_density                 => col_chem%water_density                 , &
          aqueous_pressure              => col_chem%aqueous_pressure              , &
          total_mobile                  => col_chem%total_mobile                  , &
@@ -365,6 +366,15 @@ contains
                 c = filter(fc)
                 do j = 1, nlevsoi
                    soil_FeS(c,j) = cur_data%data_real_2d(c,j)
+                enddo
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_STATE_SOIL_ACETATE)
+             do fc = 1, num_filter
+                c = filter(fc)
+                do j = 1, nlevsoi
+                   soil_acetate(c,j) = cur_data%data_real_2d(c,j)
                 enddo
              enddo
              cur_data%is_set = .true.

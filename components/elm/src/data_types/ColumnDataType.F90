@@ -258,6 +258,10 @@ module ColumnDataType
     real(r8), pointer :: sminn                    (:)     => null() ! (gN/m2) soil mineral N
     real(r8), pointer :: DON_vr                   (:,:)   => null() ! (gN/m3) vertically-resolved DON
     real(r8), pointer :: totDON                   (:)     => null() ! (gN/m2) soil total DON
+    real(r8), pointer :: N2O_vr                   (:,:)   => null() ! (gN/m3) vertically-resolved N2O
+    real(r8), pointer :: N2_vr                    (:,:)   => null() ! (gN/m3) vertically-resolved N2
+    real(r8), pointer :: totN2O                   (:)     => null() ! (gN/m2) soil total N2O
+    real(r8), pointer :: totN2                    (:)     => null() ! (gN/m2) soil total N2
     real(r8), pointer :: ntrunc                   (:)     => null() ! (gN/m2) column-level sink for N truncation
     real(r8), pointer :: cwdn                     (:)     => null() ! (gN/m2) Diagnostic: coarse woody debris N
     real(r8), pointer :: totlitn                  (:)     => null() ! (gN/m2) total litter nitrogen
@@ -1020,6 +1024,7 @@ module ColumnDataType
      real(r8), pointer :: soil_FeOxide          (:,:)   => null() ! soil iron oxide minerals (mol Fe m^-3) (1:nlevdecomp_full)
      real(r8), pointer :: soil_FeS              (:,:)   => null() ! soil iron sulfide minerals (mol Fe m^-3) (1:nlevdecomp_full)
      real(r8), pointer :: soil_Fe2              (:,:)   => null() ! soil Fe(II) (mol Fe m^-3) (1:nlevdecomp_full)
+     real(r8), pointer :: soil_acetate          (:,:)   => null() ! soil acetate (mol m^-3) (1:nlevdecomp_full)
 
      real(r8), pointer :: chem_dt               (:)     => null() ! Time step of successful chemistry solve (s)
 
@@ -3288,6 +3293,10 @@ contains
     allocate(this%smin_nh4sorb_vr       (begc:endc,1:nlevdecomp_full))   ; this%smin_nh4sorb_vr       (:,:) = spval
     allocate(this%DON_vr                (begc:endc,1:nlevdecomp_full))   ; this%DON_vr                (:,:) = 0.0_r8
     allocate(this%totDON                (begc:endc))                     ; this%totDON                (:)   = 0.0_r8
+    allocate(this%N2O_vr                (begc:endc,1:nlevdecomp_full))   ; this%N2O_vr                (:,:) = 0.0_r8
+    allocate(this%N2_vr                 (begc:endc,1:nlevdecomp_full))   ; this%N2_vr                 (:,:) = 0.0_r8
+    allocate(this%totN2O                (begc:endc))                     ; this%totN2O                (:)   = 0.0_r8
+    allocate(this%totN2                 (begc:endc))                     ; this%totN2                 (:)   = 0.0_r8
     allocate(this%decomp_npools         (begc:endc,1:ndecomp_pools))     ; this%decomp_npools         (:,:) = spval
     allocate(this%decomp_npools_1m      (begc:endc,1:ndecomp_pools))     ; this%decomp_npools_1m      (:,:) = spval
     allocate(this%smin_no3              (begc:endc))                     ; this%smin_no3              (:)   = spval
@@ -3430,9 +3439,19 @@ contains
 
     if(use_alquimia) then
        this%DON_vr(begc:endc,:) = spval
-       call hist_addfld2d (fname='DON_vr', units='gN/m^2',  type2d='levdcmp', &
+       call hist_addfld2d (fname='DON_vr', units='gN/m^3',  type2d='levdcmp', &
             avgflag='A', long_name='Soil dissolved organic nitrogen vr', &
             ptr_col=this%DON_vr,default='inactive')
+
+       this%N2O_vr(begc:endc,:) = spval
+       call hist_addfld2d (fname='N2O_vr', units='gN/m^3',  type2d='levdcmp', &
+             avgflag='A', long_name='Soil dissolved N2O vr', &
+             ptr_col=this%N2O_vr,default='inactive')
+
+       this%N2_vr(begc:endc,:) = spval
+       call hist_addfld2d (fname='N2_vr', units='gN/m^3',  type2d='levdcmp', &
+             avgflag='A', long_name='Soil dissolved N2 vr', &
+             ptr_col=this%N2_vr,default='inactive')
 
     endif
 
@@ -3924,6 +3943,8 @@ contains
              this%smin_nh4sorb_vr(i,j) = value_column
           end if
           if(use_alquimia) this%DON_vr(i,j) = value_column
+          if(use_alquimia) this%N2O_vr(i,j) = value_column
+          if(use_alquimia) this%N2_vr(i,j) = value_column
        end do
     end do
 
@@ -3999,6 +4020,8 @@ contains
       do fc = 1, num_soilc
          c = filter_soilc(fc)
          this%totDON(c) = dot_sum(this%DON_vr(c,1:nlevdecomp),dzsoi_decomp(1:nlevdecomp)) 
+         this%totN2O(c) = dot_sum(this%N2O_vr(c,1:nlevdecomp),dzsoi_decomp(1:nlevdecomp)) 
+         this%totN2(c) = dot_sum(this%N2_vr(c,1:nlevdecomp),dzsoi_decomp(1:nlevdecomp)) 
       enddo
      endif
      
@@ -4176,6 +4199,7 @@ contains
             this%totsomn(c) + &
             this%sminn(c) + &
             this%totDON(c) + &
+            this%totN2O(c) + this%totN2(c) + &
             this%totprodn(c) + &
             this%totvegn(c)
 
@@ -4190,6 +4214,7 @@ contains
             this%sminn(c) + &
             this%totprodn(c) + &
             this%totDON(c) + &
+            this%totN2O(c) + this%totN2(c) + &
             this%ntrunc(c)+ &
             this%plant_n_buffer(c) + &
             this%cropseedn_deficit(c)
@@ -4206,6 +4231,7 @@ contains
             this%totlitn(c) + &
             this%totsomn(c) + &
             this%totDON(c) + &
+            this%totN2O(c) + this%totN2(c) + &
             this%sminn(c)
     end do
 
@@ -11333,6 +11359,7 @@ contains
       allocate(this%soil_FeOxide(begc:endc, lbj:ubj))
       allocate(this%soil_FeS(begc:endc, lbj:ubj))
       allocate(this%soil_Fe2(begc:endc, lbj:ubj))
+      allocate(this%soil_acetate(begc:endc, lbj:ubj))
 
       allocate(this%chem_dt(begc:endc))
    endif
@@ -11377,6 +11404,11 @@ contains
      call hist_addfld2d (fname='soil_FeS', units='mol Fe m-3',  type2d='levdcmp', &
         avgflag='A', long_name='Soil iron sulfide mineral concentration', &
            ptr_col=this%soil_FeS,default='inactive')
+
+     this%soil_acetate(begc:endc,:) = 0.0_r8
+     call hist_addfld2d (fname='soil_acetate', units='mol m-3',  type2d='levdcmp', &
+        avgflag='A', long_name='Soil porewater acetate molar concentration', &
+           ptr_col=this%soil_acetate,default='inactive')
 
      this%chem_dt(begc:endc) = 0.0_r8
      call hist_addfld1d (fname='chem_dt', units='s', &

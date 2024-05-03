@@ -76,10 +76,15 @@ module ExternalModelAlquimiaMod
     integer :: index_e2l_flux_ch4
     integer :: index_e2l_state_nh4
     integer :: index_e2l_state_no3
+    integer :: index_e2l_state_n2o
+    integer :: index_e2l_state_n2
+    integer :: index_e2l_flux_n2o
+    integer :: index_e2l_flux_n2
     integer :: index_e2l_state_DOC
     integer :: index_e2l_state_DON
     integer :: index_e2l_state_DIC
     integer :: index_e2l_state_ch4_vr
+    integer :: index_e2l_state_acetate_vr
 
     integer :: index_e2l_state_ph
     integer :: index_e2l_state_salinity
@@ -153,8 +158,8 @@ module ExternalModelAlquimiaMod
     integer, pointer, dimension(:)       :: carbon_pool_mapping
     integer, pointer, dimension(:)       :: nitrogen_pool_mapping
     integer, pointer, dimension(:)       :: pool_reaction_mapping
-    integer                              :: CO2_pool_number,CH4_pool_number
-    integer                              :: NH4_pool_number,NO3_pool_number
+    integer                              :: CO2_pool_number,CH4_pool_number,acetate_pool_number
+    integer                              :: NH4_pool_number,NO3_pool_number,N2O_pool_number,N2_pool_number
     integer                              :: Nimm_pool_number,Nmin_pool_number,Nimp_pool_number
     integer                              :: plantNO3uptake_pool_number,plantNH4uptake_pool_number
     integer                              :: plantNO3demand_pool_number,plantNH4demand_pool_number
@@ -468,6 +473,10 @@ contains
     id                                             = E2L_STATE_METHANE_VERTICALLY_RESOLVED
     call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_e2l_state_ch4_vr              = index
+
+    id                                             = E2L_STATE_SOIL_ACETATE
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_state_acetate_vr              = index
     
     id                                             = E2L_STATE_NH4_VERTICALLY_RESOLVED
     call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
@@ -476,6 +485,22 @@ contains
     id                                             = E2L_STATE_NO3_VERTICALLY_RESOLVED
     call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_e2l_state_no3              = index
+
+    id                                             = E2L_STATE_N2O_VERTICALLY_RESOLVED
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_state_n2o              = index
+
+    id                                             = E2L_STATE_N2_VERTICALLY_RESOLVED
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_state_n2              = index
+
+    id                                             = E2L_FLUX_N2O
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_state_n2o              = index
+
+    id                                             = E2L_FLUX_N2
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_state_n2              = index
 
     id                                             = E2L_STATE_DOC_VERTICALLY_RESOLVED
     call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
@@ -930,10 +955,10 @@ end subroutine EMAlquimia_Coldstart
     real(r8) , pointer, dimension(:,:,:)    :: soilnitrogen_l2e,soilnitrogen_e2l 
     real(r8) , pointer, dimension(:,:,:)    :: decomp_k
     real(r8) , pointer, dimension(:,:)    :: temperature, h2o_liqvol, h2o_icevol
-    real(r8) , pointer, dimension(:)     :: hr_e2l,methaneflux_e2l ! 1D total surface emission
+    real(r8) , pointer, dimension(:)     :: hr_e2l,methaneflux_e2l,n2oflux_e2l,n2flux_e2l ! 1D total surface emission
     real(r8) , pointer, dimension(:)     :: NO3runoff_e2l,DONrunoff_e2l ! 1D total column runoff (gN/m2/s)
     real(r8) , pointer, dimension(:)     :: DICrunoff_e2l,DOCrunoff_e2l ! 1D total column runoff (gN/m2/s)
-    real(r8) , pointer, dimension(:,:)  :: no3_e2l,no3_l2e,nh4_e2l,nh4_l2e
+    real(r8) , pointer, dimension(:,:)  :: no3_e2l,no3_l2e,nh4_e2l,nh4_l2e,n2o_e2l,n2_e2l
     real(r8) , pointer, dimension(:,:)  :: Nimm_e2l, Nimp_e2l, Nmin_e2l
     real(r8) , pointer, dimension(:,:)  :: plantNO3uptake_e2l,plantNH4uptake_e2l, plantNdemand_l2e
     real(r8) , pointer, dimension(:,:)  :: water_density_l2e,water_density_e2l,aqueous_pressure_l2e,aqueous_pressure_e2l,porosity_l2e,dz,zi
@@ -947,7 +972,7 @@ end subroutine EMAlquimia_Coldstart
     integer  , pointer, dimension(:,:,:)   :: aux_ints_l2e, aux_ints_e2l
     real(r8) , pointer, dimension(:,:)    :: qflx_adv_l2e, qflx_lat_aqu_l2e, qflx_drain_l2e
     real(r8) , pointer, dimension(:)      :: flood_salinity_l2e, flood_nitrate_l2e, h2osfc_l2e, wtd_l2e, tide_height_l2e
-    real(r8) , pointer, dimension(:,:)    :: DOC_e2l, DON_e2l, DIC_e2l, methane_vr_e2l
+    real(r8) , pointer, dimension(:,:)    :: DOC_e2l, DON_e2l, DIC_e2l, methane_vr_e2l, acetate_vr_e2l
     real(r8) , pointer, dimension(:,:)    :: pH_e2l, O2_e2l, salinity_e2l, sulfate_e2l, sulfide_e2l, Fe2_e2l, FeOxide_e2l, FeS_e2l, carbonate_e2l
     real(r8) , pointer, dimension(:)     :: actual_dt_e2l
     real(r8)                            :: CO2_before, molperL_to_molperm3,DON_before,excess_NO3_uptake,excess_NH4_uptake
@@ -1007,6 +1032,10 @@ end subroutine EMAlquimia_Coldstart
     
     call e2l_list%GetPointerToReal2D(this%index_e2l_state_no3 , no3_e2l) ! gN/m3
     call e2l_list%GetPointerToReal2D(this%index_e2l_state_nh4 , nh4_e2l) ! gN/m3
+    call e2l_list%GetPointerToReal2D(this%index_e2l_state_n2o , n2o_e2l) ! gN/m3
+    call e2l_list%GetPointerToReal2D(this%index_e2l_state_n2 , n2_e2l) ! gN/m3
+    call e2l_list%GetPointerToReal1D(this%index_e2l_flux_n2o , n2oflux_e2l) ! gN/m2/s
+    call e2l_list%GetPointerToReal1D(this%index_e2l_flux_n2 , n2flux_e2l) ! gN/m2/s
 
     call e2l_list%GetPointerToReal2D(this%index_e2l_flux_Nimm , Nimm_e2l) ! gN/m3/s
     call e2l_list%GetPointerToReal2D(this%index_e2l_flux_Nimp , Nimp_e2l) ! gN/m3/s
@@ -1057,6 +1086,7 @@ end subroutine EMAlquimia_Coldstart
     call e2l_list%GetPointerToReal2D(this%index_e2l_state_DIC , DIC_e2l)
     call e2l_list%GetPointerToReal2D(this%index_e2l_state_DOC , DOC_e2l)
     call e2l_list%GetPointerToReal2D(this%index_e2l_state_DON , DON_e2l)
+    call e2l_list%GetPointerToReal2D(this%index_e2l_state_acetate_vr , acetate_vr_e2l) ! (mol/L)
 
     call e2l_list%GetPointerToReal2D(this%index_e2l_state_pH , pH_e2l)
     call e2l_list%GetPointerToReal2D(this%index_e2l_state_salinity , salinity_e2l)
@@ -1211,6 +1241,8 @@ end subroutine EMAlquimia_Coldstart
           ! write(iulog,*),'NH4 before',sum(nh4_l2e(c,:)*dz(c,:))
           ! write(iulog,*),'DON before',DON_before
           totalN_before = DON_before + sum(no3_l2e(c,:)*dz(c,:)) + sum(nh4_l2e(c,:)*dz(c,:))
+          if(this%n2o_pool_number>0) totalN_before = totalN_before + sum(total_mobile_e2l(c,:,this%n2o_pool_number))*natomw*2
+          if(this%N2_pool_number>0)  totalN_before = totalN_before + sum(total_mobile_e2l(c,:,this%N2_pool_number))*natomw*2
           do poolnum=1,ndecomp_pools
             ! write(iulog,*),'Soil N pools before',poolnum,sum(soilnitrogen_l2e(c,:,poolnum)*dz(c,:))
             totalN_before = totalN_before + sum(soilnitrogen_l2e(c,:,poolnum)*dz(c,:))
@@ -1384,6 +1416,17 @@ end subroutine EMAlquimia_Coldstart
                 methaneflux_e2l(c) = 0.0_r8
               endif
 
+              if(this%N2O_pool_number>0) then
+                n2oflux_e2l(c) = -surf_flux(this%N2O_pool_number)*catomw/dt ! Is this an issue if there is surface water?
+              else
+                n2oflux_e2l(c) = 0.0_r8
+              endif
+              if(this%N2O_pool_number>0) then
+                n2flux_e2l(c) = -surf_flux(this%N2_pool_number)*catomw/dt ! Is this an issue if there is surface water?
+              else
+                n2flux_e2l(c) = 0.0_r8
+              endif
+
               ! Surface flow of dissolved NO3 and NH4 need to be accounted for either by adding to runoff/leaching or tracking content in h2osfc
               ! Infiltration is a potential issue currently since we should really be tracking dissolved N stock in surface water as part of the column
               ! We will need to add DOC and DON runoff to ELM balance calculations eventually as well
@@ -1446,6 +1489,12 @@ end subroutine EMAlquimia_Coldstart
                 DON_e2l(c,j) = DON_e2l(c,j) + total_mobile_e2l(c,j,k)*natomw*this%DON_content(k)
                 DIC_e2l(c,j) = DIC_e2l(c,j) + total_mobile_e2l(c,j,k)*catomw*this%DIC_content(k) 
               enddo
+
+              if(this%acetate_pool_number>0) then
+                acetate_vr_e2l(c,j) = total_mobile_e2l(c,j,this%acetate_pool_number) ! mol/m3 bulk
+              else
+                acetate_vr_e2l(c,j) = 0.0_r8
+              endif
 
               if(this%CH4_pool_number>0) then
                 methane_vr_e2l(c,j) = total_mobile_e2l(c,j,this%CH4_pool_number)*catomw
@@ -1530,6 +1579,8 @@ end subroutine EMAlquimia_Coldstart
 
               if(this%NO3_pool_number>0) no3_e2l(c,j) = total_mobile_e2l(c,j,this%NO3_pool_number)*natomw
               if(this%NH4_pool_number>0) nh4_e2l(c,j) = total_mobile_e2l(c,j,this%NH4_pool_number)*natomw
+              if(this%n2o_pool_number>0) n2o_e2l(c,j) = total_mobile_e2l(c,j,this%n2o_pool_number)*natomw*2
+              if(this%N2_pool_number>0)  n2_e2l(c,j)   = total_mobile_e2l(c,j,this%N2_pool_number)*natomw*2
 
               if(this%Nimm_pool_number>0) Nimm_e2l(c,j) = total_immobile_e2l(c,j,this%Nimm_pool_number)*natomw/dt
               if(this%Nimp_pool_number>0) Nimp_e2l(c,j) = total_immobile_e2l(c,j,this%Nimp_pool_number)*natomw/dt
@@ -1610,12 +1661,12 @@ end subroutine EMAlquimia_Coldstart
 
 
         ! I wonder if these errors are occurring because we are dividing by a very small liquid water amount somewhere in the chemistry?
-        totalN_after = sum(DON_e2l(c,:)*dz(c,:)) + sum(nh4_e2l(c,:)*dz(c,:)) + sum(no3_e2l(c,:)*dz(c,:))
+        totalN_after = sum(DON_e2l(c,:)*dz(c,:)) + sum(nh4_e2l(c,:)*dz(c,:)) + sum(no3_e2l(c,:)*dz(c,:)) + sum(n2o_e2l(c,:)*dz(c,:)) + sum(n2_e2l(c,:)*dz(c,:))
         do poolnum=1,ndecomp_pools
           ! write(iulog,*),'Soil N pools after',poolnum,sum(soilnitrogen_e2l(c,:,poolnum)*dz(c,:))
           totalN_after = totalN_after + sum(soilnitrogen_e2l(c,:,poolnum)*dz(c,:))
         enddo
-        Nflux = sum((plantNO3uptake_e2l(c,:)+plantNH4uptake_e2l(c,:))*dz(c,:))*dt + (NO3runoff_e2l(c) + DONrunoff_e2l(c))*dt
+        Nflux = sum((plantNO3uptake_e2l(c,:)+plantNH4uptake_e2l(c,:))*dz(c,:))*dt + (NO3runoff_e2l(c) + DONrunoff_e2l(c) + n2oflux_e2l(c) + n2flux_e2l(c))*dt
         if(abs(totalN_after + Nflux - totalN_before) > 1e-9 ) then
               ! write(iulog,*) ' N imbalance after alquimia solve ',totalN_after + Nflux - totalN_before
               ! write(iulog,*) 'N before = ',totalN_before
@@ -2079,8 +2130,8 @@ end subroutine EMAlquimia_Coldstart
     do ii=1, this%chem_sizes%num_primary
       call c_f_string_ptr(name_list(ii),alq_poolname)
       if((trim(alq_poolname) == 'CO2(aq)') .or. &
-         (trim(alq_poolname) == 'HCO3-') .or. &
-         (trim(alq_poolname) == 'CH4(aq)') ) then
+         (trim(alq_poolname) == 'HCO3-') ) then
+        !  (trim(alq_poolname) == 'CH4(aq)') ) then ! Take methane out of this calculation so it's more standard DIC
         this%DIC_content(ii) = 1.0_r8
       endif
       ! Not sure if there's a good way to pass C:N ratios from PFLOTRAN to here, but this is really clunky
@@ -2114,6 +2165,9 @@ end subroutine EMAlquimia_Coldstart
     this%sodium_pool_number = find_alquimia_pool('Na+',name_list,this%chem_sizes%num_primary)
     this%sulfide_pool_number = find_alquimia_pool('HS-',name_list,this%chem_sizes%num_primary)
     this%CH4_pool_number = find_alquimia_pool('CH4(aq)',name_list,this%chem_sizes%num_primary)
+    this%acetate_pool_number = find_alquimia_pool('Acetate-',name_list,this%chem_sizes%num_primary)
+    this%N2O_pool_number = find_alquimia_pool('N2O(aq)',name_list,this%chem_sizes%num_primary)
+    this%N2_pool_number = find_alquimia_pool('N2(aq)',name_list,this%chem_sizes%num_primary)
 
     if(this%Hplus_pool_number>0) write(iulog,'(a,6x,a,i3,1x)'),'H+', '<-> Alquimia pool',this%Hplus_pool_number
     if(this%sulfate_pool_number>0) write(iulog,'(a,6x,a,i3,1x)'),'SO4--', '<-> Alquimia pool',this%sulfate_pool_number
@@ -2123,7 +2177,10 @@ end subroutine EMAlquimia_Coldstart
     if(this%sodium_pool_number>0) write(iulog,'(a,6x,a,i3,1x)'),'Na+', '<-> Alquimia pool',this%sodium_pool_number
     if(this%sulfide_pool_number>0) write(iulog,'(a,6x,a,i3,1x)'),'HS-', '<-> Alquimia pool',this%sulfide_pool_number
     if(this%CH4_pool_number>0) write(iulog,'(a,6x,a,i3,1x)'),'CH4(aq)', '<-> Alquimia pool',this%CH4_pool_number
-    
+    if(this%acetate_pool_number>0) write(iulog,'(a,6x,a,i3,1x)'),'Acetate-', '<-> Alquimia pool',this%acetate_pool_number
+    if(this%N2O_pool_number>0) write(iulog,'(a,6x,a,i3,1x)'),'N2O(aq)', '<-> Alquimia pool',this%N2O_pool_number
+    if(this%N2_pool_number>0) write(iulog,'(a,6x,a,i3,1x)'),'N2(aq)', '<-> Alquimia pool',this%N2_pool_number
+
     ! Minerals might be trickier because they could have different stoichiometries and molar volumes
     ! Might be better to do this similar to DIC_content to allow for different Fe oxide minerals
     call c_f_pointer(this%chem_metadata%mineral_names%data, name_list, (/this%chem_sizes%num_minerals/))

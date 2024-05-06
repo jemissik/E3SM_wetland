@@ -335,6 +335,10 @@ module pftvarcon
   real(r8), allocatable :: sal_opt(:)        !Salinity at which optimal biomass occurs (ppt)
   real(r8), allocatable :: sal_tol(:)        !Salinity tolerance; width parameter for Gaussian distribution (ppt -1)
 
+  real(r8), allocatable :: waterlevel_threshold(:)  !threshold for water level effects (mm above surface)
+  real(r8), allocatable :: waterlevel_opt(:)        !Water level at which optimal biomass occurs (mm)
+  real(r8), allocatable :: waterlevel_tol(:)        !Water level tolerance; width parameter for Gaussian distribution (mm -1)
+
   !endif
   !phenology
   real(r8)              :: phen_a
@@ -694,10 +698,14 @@ contains
     allocate( sal_opt (0:mxpft) )
     allocate( sal_tol (0:mxpft) )
 
+    allocate( waterlevel_threshold (0:mxpft) )
+    allocate( waterlevel_opt (0:mxpft) )
+    allocate( waterlevel_tol (0:mxpft) )
+
     ! Make sure they are initialized to some values
-    sal_threshold(:) = 50.0_r8
-    sal_opt(:) = 0.0_r8
-    sal_tol(:) = 50.0_r8
+    waterlevel_threshold(:) = 50.0e6_r8 ! Very high value to effectively turn off if unset
+    waterlevel_opt(:) = 0.0_r8
+    waterlevel_tol(:) = 50.0_r8
 
     ! Set specific vegetation type values
 
@@ -1122,6 +1130,13 @@ contains
    if ( .not. readv ) sal_opt(:) = 0.0_r8 
    call ncd_io('sal_tol', sal_tol(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
    if ( .not. readv ) sal_tol(:) = 50.0_r8 
+
+   call ncd_io('waterlevel_threshold', waterlevel_threshold(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+   if ( .not. readv ) waterlevel_threshold(:) = -5000000.0_r8 ! Default turned off with very deep water table
+   call ncd_io('waterlevel_opt', waterlevel_opt(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+   if ( .not. readv ) waterlevel_opt(:) = 0.0_r8 
+   call ncd_io('waterlevel_tol', waterlevel_tol(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+   if ( .not. readv ) waterlevel_tol(:) = 50.0_r8 
 #endif
 
     call ncd_io('phen_a', phen_a, 'read', ncid, readvar=readv, posNOTonfile=.true.)

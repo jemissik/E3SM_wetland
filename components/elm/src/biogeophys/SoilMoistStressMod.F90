@@ -305,7 +305,7 @@ contains
   !--------------------------------------------------------------------------------
   subroutine calc_root_moist_stress_clm45default(bounds, &
        nlevgrnd, fn, filterp, rootfr_unf, &
-       soilstate_vars, energyflux_vars, canopystate_vars)
+       soilstate_vars, energyflux_vars, canopystate_vars, soilhydrology_vars)
     !
     ! DESCRIPTIONS
     ! compute the root water stress using the default clm45 approach
@@ -322,6 +322,7 @@ contains
     use VegetationDataType   , only : veg_wf
     use elm_varctl       , only : use_hydrstress
     use CanopyStateType , only : canopystate_type
+    use SoilHydrologyType, only : soilhydrology_type
     !
     ! !ARGUMENTS:
     implicit none
@@ -333,11 +334,13 @@ contains
     type(energyflux_type)  , intent(inout) :: energyflux_vars
     type(soilstate_type)   , intent(inout) :: soilstate_vars
     type(canopystate_type) , intent(in)    :: canopystate_vars
+    type(soilhydrology_type) , intent(in)    :: soilhydrology_vars
     !
     ! !LOCAL VARIABLES:
     real(r8), parameter :: btran0 = 0.0_r8  ! initial value
     real(r8) :: smp_node, s_node  !temporary variables
     real(r8) :: smp_node_lf       !temporary variable
+    real(r8) :: waterlevel        ! Combining surface water/water table for plant stress
     integer :: p, f, j, c, l      !indices
     !------------------------------------------------------------------------------
 
@@ -396,23 +399,21 @@ contains
                
                !using osm_inhib to change root uptake -SLL
                if (salinity(c) .ge. sal_threshold(veg_pp%itype(p))) then
-                  osm_inhib(p) = exp(-0.5*((salinity(c)-sal_opt(veg_pp%itype(p)))**2/sal_tol(veg_pp%itype(p))**2))
-                  rresis(p,j) = min( (eff_porosity(c,j)/watsat(c,j))* &
-                    (smp_node - smpsc(veg_pp%itype(p))) / (smpso(veg_pp%itype(p)) - smpsc(veg_pp%itype(p))), 1._r8)
+                  osm_inhib(p) = exp(-0.5*((salinity(c)-sal_opt(veg_pp%itype(p)))/sal_tol(veg_pp%itype(p)))**2)
                   rresis(p,j) = rresis(p,j)*osm_inhib(p)
                endif
 
-#ifdef MARSH
                !use floodf to change root water uptake
-               if (h2osfc(c) .gt. 0._r8 .and. h2osfc(c) .lt. htop(p)*1000) then
-                     floodf(p)=(htop(p)*1000-h2osfc(c))/(htop(p)*1000)
-               elseif(h2osfc(c) .ge. htop(p)*1000) then
-                     floodf(p)=0.0_r8
-               elseif(h2osfc(c) .le. 0._r8) then
-                     floodf(p)=1.0_r8                       
+               if(h2osfc(c) .gt. 0._r8) then
+                  waterlevel = h2osfc(c) ! mm, with positive meaning above soil surface
+               else
+                  waterlevel = - soilhydrology_vars%zwt_col(c)*1000_r8
                endif
-               rresis(p,j) = rresis(p,j)*max(floodf(p),0.25_r8) !BNS limit flood effect, should update to optimal PFT range
-#endif
+               if (waterlevel .gt. veg_vp%waterlevel_threshold(veg_pp%itype(p))) then
+                  floodf(p) = exp(-0.5*((waterlevel-veg_vp%waterlevel_opt(veg_pp%itype(p)))/veg_vp%waterlevel_tol(veg_pp%itype(p)))**2)
+                  ! floodf(p)=(htop(p)*1000-h2osfc(c))/(htop(p)*1000)                   
+               endif
+               rresis(p,j) = rresis(p,j)*floodf(p) !BNS limit flood effect, should update to optimal PFT range
 
                if (.not. (perchroot .or. perchroot_alt) ) then
                   rootr(p,j) = rootfr(p,j)*rresis(p,j)
@@ -456,7 +457,7 @@ contains
 
   !--------------------------------------------------------------------------------
   subroutine calc_root_moist_stress(bounds, nlevgrnd, fn, filterp, &
-       canopystate_vars, energyflux_vars,  soilstate_vars)
+       canopystate_vars, energyflux_vars,  soilstate_vars, soilhydrology_vars)
     !
     ! DESCRIPTIONS
     ! compute the root water stress using different approaches
@@ -469,6 +470,7 @@ contains
     use CanopyStateType , only : canopystate_type
     use EnergyFluxType  , only : energyflux_type
     use SoilStateType   , only : soilstate_type
+    use SoilHydrologyType   , only : soilhydrology_type
     !
     ! !ARGUMENTS:
     implicit none
@@ -479,6 +481,7 @@ contains
     type(canopystate_type) , intent(in)    :: canopystate_vars
     type(energyflux_type)  , intent(inout) :: energyflux_vars
     type(soilstate_type)   , intent(inout) :: soilstate_vars
+    type(soilhydrology_type)   , intent(inout) :: soilhydrology_vars
     !
     ! !LOCAL VARIABLES:
     integer :: p, f, j, c, l                                   ! indices
@@ -510,6 +513,7 @@ contains
             energyflux_vars=energyflux_vars,            &
             soilstate_vars=soilstate_vars,              &
             canopystate_vars=canopystate_vars,          &
+            soilhydrology_vars=soilhydrology_vars,      &
             rootfr_unf=rootfr_unf(bounds%begp:bounds%endp,1:nlevgrnd))
 
     case default

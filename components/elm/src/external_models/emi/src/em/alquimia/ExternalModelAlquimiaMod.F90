@@ -496,11 +496,11 @@ contains
 
     id                                             = E2L_FLUX_N2O
     call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
-    this%index_e2l_state_n2o              = index
+    this%index_e2l_flux_n2o              = index
 
     id                                             = E2L_FLUX_N2
     call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
-    this%index_e2l_state_n2              = index
+    this%index_e2l_flux_n2              = index
 
     id                                             = E2L_STATE_DOC_VERTICALLY_RESOLVED
     call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
@@ -2130,8 +2130,8 @@ end subroutine EMAlquimia_Coldstart
     do ii=1, this%chem_sizes%num_primary
       call c_f_string_ptr(name_list(ii),alq_poolname)
       if((trim(alq_poolname) == 'CO2(aq)') .or. &
-         (trim(alq_poolname) == 'HCO3-') ) then
-        !  (trim(alq_poolname) == 'CH4(aq)') ) then ! Take methane out of this calculation so it's more standard DIC
+         (trim(alq_poolname) == 'HCO3-') .or. &
+         (trim(alq_poolname) == 'CH4(aq)') ) then ! Take methane out of this calculation so it's more standard DIC
         this%DIC_content(ii) = 1.0_r8
       endif
       ! Not sure if there's a good way to pass C:N ratios from PFLOTRAN to here, but this is really clunky

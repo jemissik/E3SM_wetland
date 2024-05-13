@@ -1342,10 +1342,10 @@ end subroutine EMAlquimia_Coldstart
 
               ! Do drainage above frozen layer
               do j=1,nlevdecomp
-                if((h2o_liqvol(c,j))/porosity_l2e(c,j)>0.7_r8 .and. (liq_frac(j)>0.5)) then
-
-                  qflx_lat_aqu_l2e(c,j) = qflx_lat_aqu_l2e(c,j) - (qflx_adv_l2e(c,j-1)-qflx_adv_l2e(c,j))*dt - sum(qflx_drain_l2e(c,1:nlevdecomp))*dz(c,j)/sum(dz(c,1:nlevdecomp))*0._r8
+                if((h2o_liqvol(c,j))/porosity_l2e(c,j)<0.7_r8 .or. (liq_frac(j)<0.5)) then
+                  qflx_adv_l2e(c,j) = 0.0_r8
                 endif
+                  qflx_lat_aqu_l2e(c,j) = qflx_lat_aqu_l2e(c,j) - (qflx_adv_l2e(c,j-1)-qflx_adv_l2e(c,j))*dt
               enddo
 
 
@@ -1677,14 +1677,16 @@ end subroutine EMAlquimia_Coldstart
               ! Assuming this is a precision issue in PFLOTRAN solve, change NO3 runoff or top layer NO3 to balance things
               ! This is to fix a tradeoff where making the precision of the PFLOTRAN solve too fine means it crashes on convergence errors, but making it too low violates ELM N balance limit of 1e-8
               if (  abs(totalN_after + Nflux - totalN_before) < 5e-7 ) then ! Only do it for relatively small errors
-                do j=nlevdecomp-1,1,-1
-                  if(no3_e2l(c,j)*dz(c,j) > abs(totalN_after + Nflux - totalN_before)*100 & ! Only if it's a small percent of NO3
-                    ) then
-                      ! write(iulog,*) 'Subtracting imbalance from NO3 in layer ',j,no3_e2l(c,j)*dz(c,j)
-                      no3_e2l(c,j) = no3_e2l(c,j) - (totalN_after + Nflux - totalN_before)/dz(c,j)
-                      exit
-                  endif
-                enddo
+                NO3runoff_e2l(c) = NO3runoff_e2l(c) - (totalN_after + Nflux - totalN_before)/dt
+                ! do j=nlevdecomp-1,1,-1
+                !   write(iulog,*) 'Layer ',j,no3_e2l(c,j)*dz(c,j),abs(totalN_after + Nflux - totalN_before)*100
+                !   if(no3_e2l(c,j)*dz(c,j) > abs(totalN_after + Nflux - totalN_before)*100 & ! Only if it's a small percent of NO3
+                !     ) then
+                !       ! write(iulog,*) 'Subtracting imbalance from NO3 in layer ',j,no3_e2l(c,j)*dz(c,j)
+                !       no3_e2l(c,j) = no3_e2l(c,j) - (totalN_after + Nflux - totalN_before)/dz(c,j)
+                !       exit
+                !   endif
+                ! enddo
               endif
         endif
 
@@ -2418,8 +2420,9 @@ end subroutine EMAlquimia_Coldstart
     this%chem_state%porosity =    porosity(j)
     this%chem_state%temperature = temperature(j) - 273.15
     this%chem_properties%volume = volume(j)
-    this%chem_properties%saturation = sat(j) ! Set minimum saturation to stop concentrations from blowing up at low soil moisture
-    
+    this%chem_properties%saturation = sat(j)*max(liq_frac(j),0.01) ! Set minimum saturation to stop concentrations from blowing up at low soil moisture
+    if(liq_frac(j)<0.5) this%chem_state%temperature = -100.0_r8
+
     call this%copy_ELM_to_Alquimia(j,water_density,&
           aqueous_pressure,&
           total_mobile,&

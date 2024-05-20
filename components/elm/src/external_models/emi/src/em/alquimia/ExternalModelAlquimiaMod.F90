@@ -2680,12 +2680,12 @@ subroutine run_vert_transport(this,actual_dt, total_mobile, &
       ! Possible issue in low-moisture conditions: Total layer stock of O2 might be really low because not that much fits in the small amount of water
       ! In reality water should be in equilibrium with soil pore air space
       ! If we don't multiply by sat here, I guess we shove all the layer gas into the water...
-      if(sat(1)<= 0.9) then
+      ! if(sat(1)<= 0.9) then
         surf_equil_step(k) = ( surf_bc(k)*porosity(1)*max(sat(1),1.0) - total_mobile(1,k) )*dzsoi_decomp(1)
         ! write(iulog,*),'Dissolved gas',k,'BC',surf_bc(k)*porosity(c,1)*sat(1),'Surf conc',total_mobile(c,1,k),'(mol m-3 equivalent)','porosity',porosity(c,1),'saturation',sat(1),'flux',surf_equil_step(k)
         ! if(k==this%CH4_pool_number) write(iulog,*),'Methane ','BC',surf_bc(k)*porosity(c,1),'Surf conc',total_mobile(c,1,k),'(mol m-3 equivalent)','porosity',porosity(c,1),'saturation',sat(1),'flux',surf_equil_step(k)/dzsoi_decomp(1)
         total_mobile(1,k) = surf_bc(k)*porosity(1)*max(sat(1),1.0)
-      endif
+      ! endif
 
       ! Try equilibrating top two layers if unsaturated
       if(sat(1)<=0.9 .and. sat(2)<=0.75) then

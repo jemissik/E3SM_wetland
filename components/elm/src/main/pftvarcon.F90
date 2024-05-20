@@ -1132,7 +1132,7 @@ contains
    if ( .not. readv ) sal_tol(:) = 50.0_r8 
 
    call ncd_io('waterlevel_threshold', waterlevel_threshold(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
-   if ( .not. readv ) waterlevel_threshold(:) = -5000000.0_r8 ! Default turned off with very deep water table
+   if ( .not. readv ) waterlevel_threshold(:) = 5000000.0_r8 ! Default turned off with very deep surface water
    call ncd_io('waterlevel_opt', waterlevel_opt(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
    if ( .not. readv ) waterlevel_opt(:) = 0.0_r8 
    call ncd_io('waterlevel_tol', waterlevel_tol(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)

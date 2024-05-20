@@ -411,7 +411,9 @@ contains
                endif
                if (waterlevel .gt. veg_vp%waterlevel_threshold(veg_pp%itype(p))) then
                   floodf(p) = exp(-0.5*((waterlevel-veg_vp%waterlevel_opt(veg_pp%itype(p)))/veg_vp%waterlevel_tol(veg_pp%itype(p)))**2)
-                  ! floodf(p)=(htop(p)*1000-h2osfc(c))/(htop(p)*1000)                   
+                  ! floodf(p)=(htop(p)*1000-h2osfc(c))/(htop(p)*1000)   
+               else
+                  floodf(p) = 1.0_r8                
                endif
                rresis(p,j) = rresis(p,j)*floodf(p) !BNS limit flood effect, should update to optimal PFT range
 
